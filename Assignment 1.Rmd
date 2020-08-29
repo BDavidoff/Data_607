@@ -1,0 +1,35 @@
+---
+title: "Assignment 1 (Trump Approval Ratings)"
+Author: Brett D
+output:
+  html_document: default
+  pdf_document: default
+---
+Overview: The data set that i selected is 'https://projects.fivethirtyeight.com/trump-approval-ratings/',
+  the approval rating for president donald trump.  I wished to understand how his
+  approval rates have trended over time, while attmeping to control for party affiliation.
+```{r}
+#Load the data from github into a data frame, create columns for percentage, and study length.
+
+source = "https://raw.githubusercontent.com/fivethirtyeight/covid-19-polls/master/covid_approval_polls.csv"
+data = read.csv(source)
+df = data.frame(
+  Start_Date = as.Date(data[,c("start_date")]),
+  Poll_Length = as.Date(data[,c("end_date")]) - as.Date(data[,c("start_date")]),
+  Party = data[,c("party")],
+  Pollster  = data[,c('pollster')],
+  Sample_Size  = data[,c("sample_size")],
+  Approval_Percentage = (data[,c("approve")] / (data[,c("approve")] + data[,c("disapprove")])) * 100
+)
+
+```
+
+```{r}
+#visualize the data in ggplot
+library(ggplot2)
+ggplot(df) + geom_point(aes(x=Start_Date, y=Approval_Percentage, color=Party))
+```
+
+
+
+Findings: In conclusion, to the surprise of no one, republican view donald trump more favorable than democrats.  What I DID find interesting however, is that in early april, there was a spike in approval for the president among democrats that isn't shared by republicans.  Further research is needed to understand what might have happened during this time to cause this anomaly.
