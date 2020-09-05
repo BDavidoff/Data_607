@@ -1,0 +1,83 @@
+---
+title: "Assignment 2 - Collect Movie preference information"
+output: html_document
+---
+
+Overview: The assignment was to collect movie viewing data, and load that data into SQL, then to retrieve that SQL data via R.  My Approach here was to use a Google form (link below) to ask participants about their favorite movies.  Once collected, I published the results as a .csv file through Google.  Using this online .csv file, I was able to source the data into R and use R to create a SQLite database for storing the information, which I then retrieved via R.  
+
+I realize that this is a bit circular, using R to create the SQL tables and then reading said tables from R; Under normal circumstances, I would likely use a different language (such as Python or C#) to import the data into SQL, but I wanted to keep it more simple for the sake of this assignment.  
+
+Once i had read the SQL data into R, I did some routine cleaning to remove null values, and created a version of the data that was suitable for graphing. 
+
+Please note that to properly reproduce this, the RSQLite package needs to be installed. 
+
+
+
+Form Link:
+https://docs.google.com/forms/d/e/1FAIpQLSdXo-Up0SxhnbVb4besccyJf63LIZqU50moSC36xxFhSXWaNg/viewform?usp=sf_link )
+
+Load the Data from Google Sheets into R
+```{r}
+source = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRX0UUBCVnQpcYfibE8JShOOgXITnH3WQGftVRHdsdB-sAal7gFBt9CSzT5gkk9jXZL80J43BHTqvjD/pub?output=csv"
+data = data <- read.csv(source)
+```
+
+Assemble the DB Structure
+```{r}
+library(RSQLite)
+conn = dbConnect(RSQLite::SQLite(), "Movie_Preferences.db")
+
+#clear database
+dbExecute(conn, "DROP TABLE IF EXISTS User_Info")
+dbExecute(conn, "DROP TABLE IF EXISTS Movie_Info")
+dbExecute(conn, "DROP VIEW IF EXISTS Movie_Preferences_vw")
+
+#User Metadata
+user_data = data[,c(1,2,9, 10)]
+dbWriteTable(conn, "User_Info", user_data)
+
+#Movie Information
+movie_data = data[,c(1, 3,4,5,6,7,8)]
+dbWriteTable(conn, "Movie_Info", movie_data)
+
+#rejoin everything as view, further normalize data by removing joke ages
+dbExecute(conn, "CREATE VIEW Movie_Preferences_vw AS 
+  SELECT 
+    User_Info.ID, 
+    Movie_Info.[Star.Wars..The.Rise.of.Skywalker] as 'Star_Wars',
+    Movie_Info.[Avengers..End.Game] as 'Avengers',
+    Movie_Info.[The.Lion.King] as 'Lion_King',
+    Movie_Info.[Frozen.ii] as 'Frozen',
+    Movie_Info.[Spider.man..far.from.home] as 'Spider_Man',
+    Movie_Info.[Jumanji..The.Next.Level] as 'Jumanji',
+    User_Info.[What.is.your.Gender] as 'Gender',
+    User_Info.[Age]
+  FROM User_Info
+  INNER JOIN Movie_Info ON User_Info.ID = MOvie_Info.ID
+  WHERE User_Info.Age < 100"
+)
+```
+
+Pull data from SQL into data frame, Fix the data, remove NA and replace with 0
+```{r}
+df = dbReadTable(conn, 'Movie_Preferences_vw')
+df[is.na(df)] = 0
+print(df)
+```
+
+Reshape data frame and graph
+```{r}
+library(tidyr)
+library(ggplot2)
+DF_Tall = df %>% gather(key=Movie, value = Rating, Star_Wars:Jumanji)
+
+ggplot(DF_Tall) +
+    geom_bar(aes(x = Movie, fill = as.factor(Rating)), 
+             position = "dodge", stat = "count") + 
+    facet_wrap(~Gender) + coord_flip()
+```
+
+Analysis:  Based on these charts and the data collected, i would recommend that participant #10 NOT go see frozen, as people who ranked avengers highly (a group she is a part of) seemed to not like frozen.
+
+Conclusion:  I was surprised to see how few people (male or female) gave star wars a 5; I thought it was good, oh well...  Anyway, Men seemed to overwhelmingly like the avengers movies and women were big fans of frozen.  What is interesting here is that The Lion King is high up on both lists, and only star wars is low on both. Another interesting data point here is that among men, frozen seems to be highly polarized, with people either enjoying it or hating it, but not much in between.
+
