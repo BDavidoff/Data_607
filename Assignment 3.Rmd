@@ -1,0 +1,101 @@
+---
+title: "Assignment 3"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r}
+#get data
+source = 'https://raw.githubusercontent.com/fivethirtyeight/data/master/college-majors/majors-list.csv'
+data = read.csv(source)
+```
+
+1. Using the 173 majors listed in fivethirtyeight.com’s College Majors dataset [https://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/], provide code that identifies the majors that contain either "DATA" or "STATISTICS"
+
+```{r}
+Data_Majors = subset(data, grepl("DATA|STATISTICS", Major))
+Data_Majors
+```
+
+#2 Write code that transforms the data below:
+
+[1] "bell pepper"  "bilberry"     "blackberry"   "blood orange"
+
+[5] "blueberry"    "cantaloupe"   "chili pepper" "cloudberry"  
+
+[9] "elderberry"   "lime"         "lychee"       "mulberry"    
+
+[13] "olive"        "salal berry"
+
+Into a format like this:
+
+c("bell pepper", "bilberry", "blackberry", "blood orange", "blueberry", "cantaloupe", "chili pepper", "cloudberry", "elderberry", "lime", "lychee", "mulberry", "olive", "salal berry")
+
+```{r}
+Source_Raw = '[1] "bell pepper"  "bilberry"     "blackberry"   "blood orange"
+
+[5] "blueberry"    "cantaloupe"   "chili pepper" "cloudberry"  
+
+[9] "elderberry"   "lime"         "lychee"       "mulberry"    
+
+[13] "olive"        "salal berry"'
+
+
+Source_Clean = c(scan(text=Source_Raw, what="character", quiet=TRUE))
+Source_Clean = Filter(function(x) !any(grepl("\\[", x)), Source_Clean)
+Source_Clean
+```
+
+3. Describe, in words, what these expressions will match:
+
+    (.)\1\1
+    
+        -Matches any set of characters where they are the same 3 times in a row (ex. 222 aaa, !!!)
+    
+    "(.)(.)\\2\\1"
+    
+        -Matches the 2 characters before the string '\2\1' appears, as well as the \2\1 (ex. ty\2\1, k-\2\1)
+    
+    
+    (..)\1
+    
+        -Matches any set of TWO characters where they are the same 2 times in a row (ex. 2222, abab, #!#!)
+    
+    
+    "(.).\\1.\\1"
+        
+        -Matches the character before a \1 that has another character followed by anotehr \1 (ex. a\1b\1, !\1*\1)
+    
+    
+    "(.)(.)(.).*\\3\\2\\1"
+    
+        -Matches the first 3 characters of a string that ends in \3\2\1, as well as all the other characters in said string (ex. This is a test\3\2\1)
+        
+        
+        
+4 Construct regular expressions to match words that:
+
+    Start and end with the same character.
+    Contain a repeated pair of letters (e.g. "church" contains "ch" repeated twice.)
+    Contain one letter repeated in at least three places (e.g. "eleven" contains three "e"s.)
+    
+```{r}
+library(tidyr)
+test_words = list("greene", "under", "glasses", "test", "gaming", "church", "peep")
+
+
+#Start and end with the same character.
+Regex1 = "^(.).+\\1$"
+Filter(function(x) any(grepl(Regex1, x)), test_words)
+  
+#Contain a repeated pair of letters (e.g. "church" contains "ch" repeated twice.)
+Regex2 = '\\b\\w*(\\w{2})\\w*\\1'
+Filter(function(x) any(grepl(Regex2, x)), test_words)
+  
+#Contain one letter repeated in at least three places (e.g. "eleven" contains three "e"s.)
+Regex3 = "^[a-z]*([a-z])\\1[a-z]*$"
+Filter(function(x) any(grepl(Regex3, x)), test_words)
+```
+
+       
