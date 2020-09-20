@@ -1,0 +1,116 @@
+---
+title: "Data 607 - Project 1"
+output: html_document
+---
+
+
+Start by getting the raw data from github
+```{r}
+library(tidyverse)
+
+#Get the raw data
+source = 'https://raw.githubusercontent.com/BDavidoff/Data_607/master/Chess_Data.txt'
+source_data = readLines(source, warn=FALSE)
+length(source_data)
+
+```
+
+Do some heavy handed trimming to remove the obviously bad parts of the text file
+```{r}
+#cut the top 3 lines
+tmp_data = source_data[-c(1,2,3)]
+
+#remove every line that starts with a '-' character
+tmp_data = tmp_data[!grepl("^-", tmp_data)]
+
+#Get the top lines
+top_lines = tmp_data[seq(1, length(tmp_data), 2)]
+
+#Get the bottom lines
+bot_lines = tmp_data[-c(1)]
+bot_lines = bot_lines[seq(1, length(bot_lines), 2)]
+
+#merge both lists together with a map
+merged_data = paste0(top_lines, bot_lines)
+final_data = Map({function(x) strsplit(x, split='\\|') }, merged_data)
+```
+
+
+Convert list to data frame
+```{r}
+dt = data.frame(matrix(unlist(final_data), nrow=length(final_data), byrow=T))
+
+#change the name of the columns for readability
+dt = select(dt, 1:12)
+colnames(dt) = c("ID", "Name", "Total Points", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "State", "Rating")
+glimpse(dt)
+```
+
+
+More discrete changes need to be made to specific columns to further clean the data and prepare for loading into a CSV
+```{r}
+#Change the Rating column to remove everything except the rating
+#NOTE: this probably should have been done in 1 step instead of 2 but for the life of me i can't figure out how to get these 2 RegEx expressions to play nice on the same line so to save my own sanity, I've split them into 2.
+dt$Rating = dt$Rating %>% str_extract("(?<=R: )(.*).+?(?=->)") %>% str_extract("[^P]*")
+
+
+#clean the round columns to contain only the IDs of the opponents, removing the win/loss stat
+#NOTE: though loops are normally frowned upon in vectorized languages such as R, in this case it is acceptable as the number of loops is both known, and very short.  this will not cause a noticable decrease in performance, nor will it show a measurable increase in runtime.
+i = 4
+while(i < 11) {
+  dt[, i] = str_replace(dt[, i], "[^0-9]", "")
+  i = i + 1
+}
+
+#Trim white space out of every column
+for(c in 1:length(dt)) {
+  dt[, c] = trimws(dt[, c])
+}
+
+#Swap out IDs for ratings of opponents, convert to numeric as well.
+i = 4
+while(i < 11) {
+  dt[, i] = dt$Rating[match(unlist(dt[, i]), dt$ID)]
+  dt[, i] = as.numeric(as.character(dt[, i]))
+  i = i + 1
+}
+```
+
+now that the data that we need is cleaned and formatted, I can assemble it into a data frame that matches the assigned format.
+```{r}
+data_output = data.frame(
+  'Name' = dt$Name,
+  'State'= dt$State,
+  'Point_Total' = dt$`Total Points`,
+  'Player_Rating'= dt$Rating,
+  'Avg_Opp_Rating' = round(rowMeans(dt[,4:10], na.rm=TRUE), digits=0) 
+)
+data_output
+#Final output (row.names = FALSE needed to keep an ID column from appearing for some reason)
+write.csv(data_output, "Chess_Scores_CLEAN.csv", row.names = FALSE)
+```
+
+
+Remaining questions and conclusions
+
+```{r}
+#From the cross-tables, choose only the player’s opponents and average pre-rating of their opponents, both for players who played all of the scheduled games
+played_all = data.frame(
+  'Name' = dt$Name,
+  'Player_Rating'= dt$Rating,
+  'Avg_Opp_Rating' = round(rowMeans(dt[,4:10], na.rm=FALSE), digits=0) 
+)
+
+played_all = played_all %>% filter(!is.na(Avg_Opp_Rating))
+played_all
+
+
+#and for players who had one or more unplayed games (e.g. byes, forfeits)
+played_some = data.frame(
+   'Name' = dt$Name,
+  'Player_Rating'= dt$Rating,
+  'Avg_Opp_Rating' = round(rowMeans(dt[,4:10], na.rm=TRUE), digits=0) 
+)
+
+```
+
