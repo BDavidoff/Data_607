@@ -1,0 +1,82 @@
+---
+title: "Assignment 5"
+output: html_document
+---
+
+Create the data
+Read the database into a data frame
+Create a .csv file containing the information
+Using “wide” data structure
+Or, optionally, an SQL DB
+```{r warning=FALSE,results='hide'}
+library(dplyr)
+library(RSQLite)
+library(ggplot2)
+library(tidyr)
+
+#Creating a database using SQLite again, as it's well suited for these small modular tasks.
+con = dbConnect(SQLite(), "Flights.db")
+dbSendQuery(con, "DROP TABLE IF EXISTS Flight_Info")
+dbSendQuery(con, "CREATE TABLE Flight_Info (Airport TEXT, IsDelayed INTEGER, Los_Angeles INTEGER, Phoenix INTEGER, San_Diego INTEGER, San_Francisco INTEGER, Seattle INTEGER)")
+
+dbSendQuery(con, "INSERT INTO Flight_Info VALUES ('ALASKA', 0, 497, 22, 212, 503, 1841)")
+dbSendQuery(con, "INSERT INTO Flight_Info VALUES ('ALASKA', 1, 62, 12, 20, 102, 305)")
+dbSendQuery(con, "INSERT INTO Flight_Info VALUES ('AM WEST', 0, 694, 4840, 383, 320, 201)")
+dbSendQuery(con, "INSERT INTO Flight_Info VALUES ('AM WEST', 1, 117, 415, 65, 129, 61)")
+```
+
+Read the information from your .CSV file into R 
+Use tidyr as needed to tidy data. 
+Use dplyr as needed to transform data. 
+```{r}
+flight_info = dbReadTable(con, 'flight_info')
+
+#Make data "tall" using gather and spread
+tall_flights = flight_info %>% gather(Destination, Count, Los_Angeles:Seattle) %>% spread(IsDelayed, Count)
+
+#Fix the column names
+colnames(tall_flights)[3] = "On_Time"
+colnames(tall_flights)[4] = "Delayed"
+
+#Add percentages
+tall_flights$On_Time_Percentage = round((tall_flights$On_Time / (tall_flights$On_Time + tall_flights$Delayed)) * 100, 2)
+tall_flights
+```
+
+Compare the per-city on-time performance for both airlines
+```{r}
+# dodged barplot with multiple groups
+ggplot(data=tall_flights, aes(x=Destination, y=On_Time_Percentage, fill=Airport)) +
+  geom_bar(stat="identity", position=position_dodge())
+```
+
+Compare the overall on-time performance for both airlines
+```{r warning=FALSE}
+#Create data frames for total on time percentages
+grouped_flights = tall_flights %>% group_by(Airport) %>% summarise_at(2:3, funs(sum))
+
+#Add percentages
+grouped_flights$On_Time_Percentage = round((grouped_flights$On_Time / (grouped_flights$On_Time + grouped_flights$Delayed)) * 100, 2)
+grouped_flights
+
+#Standard bar plot
+ggplot(data=grouped_flights, aes(x=Airport, y=On_Time_Percentage, fill=Airport)) +
+  geom_bar(stat="identity")
+```
+
+Explain the apparent discrepancy between the per-city and overall performances
+Provide an interesting paradoxical conclusion 
+Provide a conclusion (including any findings and recommendations)
+
+# Conclusions:
+Based on the data, AM West has a slightly better on time percentage across all airlines than Alaska does, despite having worse performance in every airport except Phoenix.  The reason this is, is that the discrepancy in Phoenix is SO large, that it allows AM west to claim the better avg time.
+
+
+Looking at the raw numbers, this is likely an anomaly being caused by a lack of data, as Alaska has barely any flights in Phoenix.  I think more data on Alaska flights to Phoenix are needed to make a fair comparison, and if none are available, it might be prudent to attempt to impute data from previous years to fill in the gaps here.
+
+
+
+
+
+
+
