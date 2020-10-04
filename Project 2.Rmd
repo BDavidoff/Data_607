@@ -1,0 +1,196 @@
+---
+title: "Brett Davidoff - Project 2"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+library(reticulate)
+use_python("C:\\path\\to\\folder\\containing\\r-miniconda")
+```
+
+### Douglas Barely - Activies of Members of European Parliament
+Get data from web into SQL database
+```{python results="hide"}
+import sqlite3 as sql
+
+#Create a sqlite db and load the data 
+conn = sql.connect("Project2.db")
+cur = conn.cursor()
+cur.execute("DROP TABLE IF EXISTS parl_info")
+cur.execute('''CREATE TABLE parl_info (
+  category       			TEXT,
+	Calc           			TEXT,
+	Attendance_RCV 			REAL,
+	Reports        			REAL,
+	Written_Declaration		REAL,
+	Speeches				REAL,
+	Motions					REAL,
+	Opinions				REAL,
+	Questions				REAL,
+	Amendments				REAL
+)''')
+cur.execute("INSERT  INTO parl_info VALUES ('ABSENTEEES', 'MEAN', 66.22, 0, 0.2, 32.9, 0.5, 0, 29.8, 1)")
+cur.execute("INSERT  INTO parl_info VALUES ('ABSENTEEES', 'MEDIAN', 61.88, 0, 0, 24, 0.5, 0, 5.5, 0)")
+cur.execute("INSERT  INTO parl_info VALUES ('ABSENTEEES', 'SD', 20.09, 0, 0.42, 24.58, 0.53, 0, 61.14, 1.89)")
+cur.execute("INSERT  INTO parl_info VALUES ('PUBLIC ORATORS', 'MEAN', 82.16, 0, 3.42, 222.05, 2.89, 0.16, 117.63, 13.79)")
+cur.execute("INSERT  INTO parl_info VALUES ('PUBLIC ORATORS', 'MEDIAN', 83.66, 0, 0, 101, 2, 0, 101, 2)")
+cur.execute("INSERT  INTO parl_info VALUES ('PUBLIC ORATORS', 'SD', 12.94, 0, 7.22, 319.29, 3.38, 0.69, 129.07, 30.21)")
+cur.execute("INSERT  INTO parl_info VALUES ('PRAGMATISTS', 'MEAN',   91.16, 2.08, 5.31, 317.23, 20.15, 0.92, 165.46, 52)")
+cur.execute("INSERT  INTO parl_info VALUES ('PRAGMATISTS', 'MEDIAN', 93.62, 1,    4, 183, 8, 0, 70, 27)")
+cur.execute("INSERT  INTO parl_info VALUES ('PRAGMATISTS', 'SD',     6.95,  3.71, 4.96, 337.8, 33.31, 1.5, 207.44, 52.84)")
+conn.commit()
+```
+Tidy and clean data
+```{python}
+import numpy   as np
+import pandas  as pd
+
+#Read the information into python as a data frame
+raw_data = pd.read_sql('SELECT * FROM parl_info', conn)
+conn.close()
+
+#Combine all 'actions' into a single column with pandas melt function
+target_cols = ['Attendance_RCV', 'Reports', 'Written_Declaration', 'Speeches', 'Motions', 'Opinions', 'Questions', 'Amendments']
+id_cols     = ['category', 'Calc']
+long_data = pd.melt(raw_data, id_vars= id_cols, value_vars=target_cols, var_name='Action')
+long_data
+
+#Add column for speech percentage of attendance
+raw_data['Speech_Percentage'] = raw_data["Speeches"] / raw_data["Attendance_RCV"]
+
+#Get only the mean columns
+means = raw_data[raw_data["Calc"] == "MEAN"]
+```
+
+Compare Speeches to Attendance for each category of Members of European Parliament (Absentees, Public Orators, Pragmatists).
+```{r}
+library(ggplot2)
+
+#Carry data frame from python into R for ggplot (This could be done in python but since the library is literally identical, seems better to use the original R version)
+ggplot(py$means, aes(x=category, y=Speech_Percentage)) + geom_bar(stat='identity')
+```
+Conclusion:  Interestingly enough, it looks like the pragmatists have a higher speech percentage than the orators, who i would assume, are known for their talking (hence their name).  Both Orators and Pragmatists have percetnages over 1, implying that they are not limiting themselves to 1 speech per day.  I would be interested to know how pragmatists managed to squeeze in so many speeches in so few days.
+
+* * *
+\pagebreak
+
+
+
+
+
+
+
+
+### Peter Fernandes - NYC per-capita fuel consumption and CO2 emissions
+
+Get data from web into database
+```{python results="hide"}
+#connect to the project database and add the new table
+
+conn = sql.connect("Project2.db")
+cur = conn.cursor()
+
+cur.execute("DROP TABLE IF EXISTS fuel_info")
+cur.execute('''CREATE TABLE fuel_info (
+	Category TEXT,
+	Building_Energy REAL,
+	Building_Consumption REAL,
+	Transportation_Energy REAL,
+	Transportation_Emmissions REAL
+)''')
+
+cur.execute("INSERT INTO fuel_info VALUES ('Rural counties (1)', 35.1, 2.2, 121.2, 8.2)")
+cur.execute("INSERT INTO fuel_info VALUES ('Mixed rural counties (2)', 50.3, 3.0, 98.5, 6.6)")
+cur.execute("INSERT INTO fuel_info VALUES ('Mixed urban counties (1)', 32.9, 2.2, 238.7, 15.9)")
+cur.execute("INSERT INTO fuel_info VALUES ('Urban counties (19)', 57.3, 3.2, 56.2, 3.8)")
+conn.commit()
+```
+Tidy and clean data
+```{python}
+#Read the information into python as a data frame
+raw_data = pd.read_sql('SELECT * FROM fuel_info', conn)
+conn.close()
+
+#split category column into 2
+raw_data[['Category','count']] = raw_data.Category.str.split("(",expand=True)
+
+#Fix count column to remove extra character
+raw_data["count"] = raw_data['count'].str.replace(')', '')
+
+#combine Industrial and transportation, multiplied by the count to get a weighted number
+raw_data['total_energy_wgt'] = (raw_data['Building_Energy'] + raw_data['Transportation_Energy']) * raw_data['count'].astype('int32')
+raw_data['total_emissi_wgt'] = (raw_data['Building_Consumption'] + raw_data['Transportation_Emmissions']) * raw_data['count'].astype('int32')
+raw_data['total_energy_wgt']
+```
+
+Calculate the average of energy consumption and CO2 emissions.
+```{python}
+#Weighted Energy calculation
+raw_data['total_energy_wgt'].sum() / raw_data['count'].astype('int32').sum()
+```
+```{python}
+#Emissions calculation
+raw_data['total_emissi_wgt'].sum() / raw_data['count'].astype('int32').sum()
+```
+
+
+* * *
+\pagebreak
+
+### Arushi Arora - US Gross Domestic Product by Quarter (2020 mostly)
+
+```{python results="hide"}
+#connect to the project database and add the new table
+conn = sql.connect("Project2.db")
+cur = conn.cursor()
+
+cur.execute("DROP TABLE IF EXISTS GDP_info")
+cur.execute('''CREATE TABLE GDP_Info (
+	Name TEXT,
+	Q2_2020 REAL,
+	Q1_2020 REAL,
+	Q2_2019 REAL
+)''')
+
+cur.execute("INSERT INTO GDP_Info VALUES ('Business - Nonfarm', 14279.793, 16201.329, 16117.469)")
+cur.execute("INSERT INTO GDP_Info VALUES ('Business - farm'   , 102.584  , 149.838  , 133.749  )")
+cur.execute("INSERT INTO GDP_Info VALUES ('Households - Household', 1541.400, 1532.649, 1495.364)")
+cur.execute("INSERT INTO GDP_Info VALUES ('Households - NP and serving households', 1157.268, 1218.360, 1178.617)")
+cur.execute("INSERT INTO GDP_Info VALUES ('Government - Federal', 773.111, 763.969, 747.691)")
+cur.execute("INSERT INTO GDP_Info VALUES ('Government - Local', 1632.355, 1694.993, 1656.987)")
+conn.commit()
+```
+
+Tidy and clean data
+```{python}
+#Read the information into python as a data frame
+raw_data = pd.read_sql('SELECT * FROM GDP_info', conn)
+conn.close()
+
+#split name column into 2
+raw_data[['Type','Name']] = raw_data.Name.str.split(" - ",expand=True)
+
+#melt 'Q' Columns into single column
+long_data = pd.melt(raw_data, id_vars= ['Name', 'Type'], value_vars=['Q2_2020', 'Q1_2020', 'Q2_2019'], var_name='Quarter')
+long_data
+```
+
+
+analysis and conclusions
+```{r}
+library(ggplot2)
+
+#plot all data
+ggplot(data=py$long_data, aes(x=Quarter, y=value, fill=Name)) +
+  geom_bar(stat="identity", position=position_dodge())
+
+
+#plot government only data
+gov_only = subset(py$long_data, Type == 'Government')
+ggplot(data=gov_only, aes(x=Quarter, y=value, fill=Name)) +
+  geom_bar(stat="identity", position=position_dodge())
+```
+
+Conclusions:  While most sectors seem to be mostly unchanged from the 3 quarters, there is a noticable drop in the business sector.  Just for my own curiosity, I decided to a close up graph of government only, and they were so similar that I had to check the data again to make sure that I didn't make a mistake.  In conclusion, it seems like only non farm business is changing, but it makes up such a large part of the pie that that is still enough to see a sizable difference in the economy.  I would like to see a more in depth breakdown of non farm business to do further analysis of what exactly is changing from quarter to quarter here, and I would remove the other types, as they are not really affected in an interesting way in my opinion.
