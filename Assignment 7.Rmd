@@ -1,0 +1,66 @@
+---
+title: "Assignment 7"
+output: html_document
+---
+Libraries
+```{r warning=-1}
+library(jsonlite)
+library(tidyr)
+library(xml2)
+library(purrr)
+library(rvest)
+library(dplyr)
+```
+
+
+
+Read JSON into data frame
+```{r}
+JSource = 'https://raw.githubusercontent.com/BDavidoff/Data_607/master/books.json'
+JFrame = fromJSON(JSource) %>% as.data.frame
+JFrame
+
+#NOTE: the authors column doesn't read well in the raw output because this is a list object instead of a character deliminated string.  I think that this is a better choice because it will make it easier to do data manipulation, which is more important than display in R Studio.
+```
+
+Read XML into data frame
+```{r}
+
+XSource = 'https://raw.githubusercontent.com/BDavidoff/Data_607/master/books.xml'
+XData = read_xml(XSource)
+
+XFrame = xml_find_all(XData, ".//book") %>%
+  map_df(function(x) {
+    list(
+      name=xml_find_first(x, ".//name") %>%  xml_text(),
+      authors=list(xml_find_all(x, './/author') %>% xml_text()),
+      genre=xml_find_first(x, ".//genre") %>%  xml_text(),
+      year=xml_find_first(x, ".//year") %>%  xml_text(),
+      origin_country=xml_find_first(x, ".//origin_country") %>%  xml_text()
+  )
+})
+
+XFrame
+
+```
+
+Read HTML into data frame
+
+```{r warning=-1}
+
+HSource = 'https://raw.githubusercontent.com/BDavidoff/Data_607/master/books.html'
+HData = read_html(HSource)
+HFrame = html_nodes(HData, "table") %>%
+        html_table(fill = TRUE)
+HFrame
+```
+
+Programatically compare the data frames
+```{r}
+all_equal(JFrame, XFrame)
+```
+the all_equal function confirms that the json and xml frames are identical, the html frame having a different value for authors is obviously not the same.
+
+
+
+Conclusions:  I thought that the JSON dataframe was the easiest to construct, and since that is more or less the standard for data storage (not including SQL) these days, that is probably a good thing.  I was surprised to see how much more difficult XML was to get into a frame than HTML was, considering that html usually isn't used for this purpose, but it makes sense that this would be important in R as scraping HTML data would be very useful for getting large amounts of data off the web for the purposes of cleaning and processing.
