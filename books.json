@@ -1,0 +1,30 @@
+[
+	{
+		"name"    : "The History of the Decline and Fall of the Roman Empire",
+		"authors" :	[
+			"Edward Gibbon"
+		],
+		"genre": "History",
+		"year": "1776",
+		"origin_country" : "England"	
+	},
+	{
+		"name"    : "Hyperion",
+		"authors" :	[
+			"Dan Simmons"
+		],
+		"genre": "Science Fiction",
+		"year": "1989",
+		"origin_country" : "America"	
+	},
+	{
+		"name"    : "Good Omens",
+		"authors" :	[
+			"Neil Gaiman",
+			"Terry Pratchett"
+		],
+		"genre": "Fantasy",
+		"year": "1990",
+		"origin_country" : "England"	
+	}
+]

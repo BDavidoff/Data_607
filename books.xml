@@ -1,0 +1,24 @@
+<books>
+	<book>
+		<name>The History of the Decline and Fall of the Roman Empire</name>
+		<author>Edward Gibbon</author>
+		<genre>History</genre>
+		<year>1776</year>
+		<origin_country>England</origin_country>
+	</book>	
+	<book>
+		<name>Hyperion</name>
+		<author>Dan Simmons</author>
+		<genre>Science Fiction</genre>
+		<year>1989</year>
+		<origin_country>America</origin_country>
+	</book>	
+	<book>
+		<name>Good Omens</name>
+		<author>Neil Gaiman</author>
+		<author>Terry Pratchett</author>
+		<genre>Fantasy</genre>
+		<year>1990</year>
+		<origin_country>England</origin_country>
+	</book>
+</books>
