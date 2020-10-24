@@ -1,0 +1,28 @@
+---
+title: "Assignment 9 - Web APIs"
+output: html_document
+---
+
+
+Using the New York Times Movie API, get review data and put it into a data frame.
+```{r}
+library(jsonlite)
+library(tidyverse)
+#sections of the endpoint, broken up for ease of use
+api_source = "https://api.nytimes.com/svc/movies/v2/reviews/search.json?"
+key = "m7ydTuU2npl56mDBGEwVB3MCYJQ1SNFR"
+
+#Change this to do different queries
+query = "Disney"
+
+#put it all together
+endpoint = paste(api_source, "query=", query, "&api-key=", key, sep="")
+
+JFrame = fromJSON(endpoint) %>% as.data.frame
+
+#Remove some of the columns that are in the JSON payload, but not really useful for analysis.
+JFrame = subset(JFrame, select = -c(1:4))
+JFrame
+```
+
+Conclusion:  I really liked the NYT approach to this, it was very easy to follow the flow of their website from creating an account, to getting my api key set up.  There documentation is also very good, the query langauge they use is very similar to SQL, and that is probably on purpose, no need to reinvent the wheel here.  Originally i wanted to find an API that leveraged the NYT recipe archive, but i couldn't find one, so that was kind of a bummer.
